@@ -5,6 +5,8 @@ const errorHandler = require('@tryghost/mw-error-handler');
 const { checkVersionMatch } = require('../../middleware/check-version-match');
 const { parseQueryBooleans } = require('../../middleware/parse-query-booleans');
 const shared = require('../../../shared');
+const auth = require('../../../../auth');
+const config = require('../../../../../shared/config');
 const express = require('../../../../../shared/express');
 const sentry = require('../../../../../shared/sentry');
 const routes = require('./routes');
@@ -17,6 +19,12 @@ module.exports = function setupApiApp() {
   const apiApp = express('admin api');
 
   // API middleware
+
+  // Before body parsing: Better Auth reads the request stream itself
+  if (config.get('auth:engine') === 'better-auth') {
+    const { betterAuthRouter } = require('./better-auth');
+    apiApp.use(betterAuthRouter(auth.betterAuth.service));
+  }
 
   // Body parsing
   apiApp.use(bodyParser.json({ limit: '50mb' }));
