@@ -28,6 +28,11 @@ function members(count: number): string {
   return `${formatNumber(count)} ${count === 1 ? 'member' : 'members'}`;
 }
 
+/** The newsletter a send went out as: shown when revealed, always read by screen readers. */
+function NewsletterDetail({ name, isRevealed }: { name: string | null; isRevealed: boolean }) {
+  return name ? <span className={isRevealed ? undefined : 'sr-only'}> of {name}</span> : null;
+}
+
 /** The send's audience, counted the way the publish flow counts it. */
 export function RecipientCount({ filter, segment }: { filter: string; segment: string }) {
   const { count } = useMembersCount(filter, { requestOptions: EDITOR_REQUEST_OPTIONS });
@@ -135,14 +140,15 @@ function SaveProblem({
 function StatusBody({
   view,
   timezone,
-  isHovered,
+  isRevealed,
   onOpenPublishFlow,
   onOpenUpdateFlow,
   onRetrySave,
 }: {
   view: Exclude<EditorStatusView, { kind: 'new' }>;
   timezone: string;
-  isHovered: boolean;
+  /** Hovered, or focused from the keyboard: shows the details the line otherwise hides. */
+  isRevealed: boolean;
   onOpenPublishFlow?: () => void;
   onOpenUpdateFlow?: () => void;
   onRetrySave?: () => void;
@@ -165,15 +171,19 @@ function StatusBody({
       ) : onOpenUpdateFlow ? (
         <>
           <SentAction onOpen={onOpenUpdateFlow} /> to {members(view.count)}
+          <NewsletterDetail isRevealed={isRevealed} name={view.newsletterName} />
         </>
       ) : (
-        <>Sent to {members(view.count)}</>
+        <>
+          Sent to {members(view.count)}
+          <NewsletterDetail isRevealed={isRevealed} name={view.newsletterName} />
+        </>
       );
     case 'scheduled':
       return (
         <span className="text-state-success">
           Scheduled
-          {isHovered && (
+          {isRevealed && (
             <>
               {' '}
               <ScheduleCountdown
@@ -217,6 +227,9 @@ function StatusBody({
           {published}
           {view.email === 'sending' && ` and sending to ${members(view.count)}`}
           {view.email === 'sent' && ` and sent to ${members(view.count)}`}
+          {view.email !== 'none' && (
+            <NewsletterDetail isRevealed={isRevealed} name={view.newsletterName} />
+          )}
         </>
       );
     }
@@ -253,6 +266,8 @@ export function EditorStatus({
   const timezone = useSiteTimezone();
   const isSaving = useSavingHold(state.kind === 'saving' || state.kind === 'pending-coalesced');
   const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const isRevealed = isHovered || isFocused;
   const [, setTick] = useState(0);
 
   useScheduledBoundary(
@@ -260,14 +275,14 @@ export function EditorStatus({
     record?.status === 'scheduled' && record.emailOnly !== true,
   );
 
-  // The countdown only reads while hovered, so it only has to tick then.
+  // The countdown only reads while revealed, so it only has to tick then.
   useEffect(() => {
-    if (!isHovered) {
+    if (!isRevealed) {
       return;
     }
     const interval = setInterval(() => setTick((tick) => tick + 1), 1000);
     return () => clearInterval(interval);
-  }, [isHovered]);
+  }, [isRevealed]);
 
   const view = deriveEditorStatus({ state, pendingSave, record, isDirty, isSaving });
   // A post that has never been saved has no status yet. Its first save still
@@ -293,12 +308,19 @@ export function EditorStatus({
       data-testid={editorStatus}
       tone="secondary"
       weight="medium"
+      onBlur={(event) => {
+        // Focus moving between the line's own link and button keeps it revealed.
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsFocused(false);
+        }
+      }}
+      onFocus={() => setIsFocused(true)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <span className="min-w-0 break-words">
         <StatusBody
-          isHovered={isHovered}
+          isRevealed={isRevealed}
           timezone={timezone}
           view={view}
           onOpenPublishFlow={onOpenPublishFlow}
