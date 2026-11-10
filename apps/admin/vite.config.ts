@@ -150,7 +150,7 @@ export default defineConfig(({ command, mode }) => ({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test-utils/setup.ts'],
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'test-utils/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'test-utils/**/*.test.ts', 'vite-*.test.ts'],
     // Acceptance and component tests run in a real browser via
     // vitest.acceptance.config.ts
     exclude: [
