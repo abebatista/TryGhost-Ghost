@@ -21,8 +21,11 @@ including `up dev:analytics`, `down --all`, `down --orphans`, `status --json`
 and `gc --yes`. See [development setup](../../docs/contributing/development-setup.md#worktrees)
 for behavior and options.
 
-`pnpm dev:up`, `pnpm dev:down`, `pnpm dev:status` and `pnpm dev:gc` remain direct
-shortcuts to the same command files. The private session-end hook and shutdown
+`pnpm gx dev multi` runs a second Ghost behind the front door. See
+[two Ghosts](../../docs/contributing/development-setup.md#two-ghosts).
+
+`pnpm dev:up`, `pnpm dev:down`, `pnpm dev:status`, `pnpm dev:gc` and `pnpm dev:multi`
+remain direct shortcuts to the same command files. The private session-end hook and shutdown
 path use Node built-ins only. Run `node tools/gx/dev-down.ts` directly when
 workspace dependencies are missing or stale; shutdown from the status view also
 uses direct Node execution and supports checkouts with the older script paths.

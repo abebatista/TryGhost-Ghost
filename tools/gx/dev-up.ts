@@ -27,7 +27,9 @@ const script = positionals[0] ?? 'dev';
 const { scripts } = JSON.parse(readFileSync(join(checkoutRoot, 'package.json'), 'utf8')) as {
   scripts: Record<string, string>;
 };
-const onHost = (name: string) => scripts[name]?.includes('ghost-monorepo:dev:host');
+// `dev:multi` runs its host target through its own command, to add the second Ghost
+const onHost = (name: string) =>
+  name === 'dev:multi' || scripts[name]?.includes('ghost-monorepo:dev:host');
 const command = scripts[script];
 if (!command || !onHost(script)) {
   const names = Object.keys(scripts).filter(onHost);

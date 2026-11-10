@@ -62,6 +62,7 @@ cli.command({
       { flags: 'down', desc: 'Stop development stacks and orphaned processes.' },
       { flags: 'status', desc: 'Inspect development stacks.' },
       { flags: 'gc', desc: 'Inspect or remove unused development resources.' },
+      { flags: 'multi', desc: 'Run this checkout with two Ghosts behind the front door.' },
     ]) {
       group.command({
         flags: command.flags,

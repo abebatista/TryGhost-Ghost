@@ -26,6 +26,7 @@
     "dev:down": "node tools/gx/dev-down.ts",
     "dev:status": "node tools/gx/dev-status.ts",
     "dev:gc": "node tools/gx/dev-gc.ts",
+    "dev:multi": "node tools/gx/dev-multi.ts",
     "fix": "pnpm store prune && node tools/scripts/clean.ts && pnpm install",
     "create-package": "pnpm gx generate package",
     "knex-migrator": "cd ghost && pnpm exec node ../tools/scripts/with-ghost-dev-env.ts env NODE_OPTIONS='--conditions=source --import=tsx' knex-migrator",
@@ -236,6 +237,17 @@
               "@tryghost/admin-toolbar"
             ]
           }
+        ]
+      },
+      "dev:host:multi": {
+        "continuous": true,
+        "executor": "nx:run-commands",
+        "options": {
+          "cwd": "ghost",
+          "command": "node ../tools/gx/dev-wait-for-ghost.ts && GHOST_DEV_BACKEND_PORT=$GHOST_DEV_BACKEND_PORT_2 node ../tools/scripts/with-ghost-dev-env.ts nodemon index.js"
+        },
+        "dependsOn": [
+          "dev:host"
         ]
       },
       "dev:host:lexical": {

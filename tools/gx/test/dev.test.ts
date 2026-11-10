@@ -20,6 +20,7 @@ test('dev commands preserve arguments, input, working directory and exit status'
     ['down', ['--orphans', '/a checkout']],
     ['status', ['--all', '--json', '--prs']],
     ['gc', ['--yes']],
+    ['multi', []],
   ] as const) {
     await writeFile(
       join(root, `tools/gx/dev-${command}.ts`),
