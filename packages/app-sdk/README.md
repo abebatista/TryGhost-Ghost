@@ -189,6 +189,11 @@ own React tree. That copy never connects, so it shows nothing of its own. Code
 that runs before `connect()` resolves runs in it too, so start fetches,
 analytics and the like once `connect()` has resolved.
 
+- The overlay covers the whole window, so a dialog lays out exactly where
+  Admin's own would: centred on the window, whichever way the sidebar is, and
+  a sheet against the window's right edge. Admin shows only the strip the
+  dialog or sheet on top fills, sized by its width, which the SDK reports, and
+  capped. Anything drawn outside that strip doesn't show.
 - Admin shows the overlay only right after the publisher clicks or types in the
   app. A dialog that opens without that, such as one open as the page loads,
   renders in the page, as does one Admin refuses to show as it opens.
