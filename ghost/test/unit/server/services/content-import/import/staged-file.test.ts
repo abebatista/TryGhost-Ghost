@@ -28,21 +28,46 @@ describe('content import staged file', function () {
     await fs.remove(storagePath);
   });
 
-  it('copies uploads to unique files and removes them idempotently', async function () {
+  it('stores uploads under unique keys and removes them idempotently', async function () {
     const stager = createImportFileStager(importsStore);
     const first = await stager.stage({ filePath: sourcePath, fileName: 'posts.csv' });
     const second = await stager.stage({ filePath: sourcePath, fileName: 'posts.csv' });
 
-    assert.notEqual(first.path, second.path);
-    assert.equal(path.dirname(first.path), storagePath);
-    assert.match(path.basename(first.path), /^content-csv-import-[0-9a-f-]{36}$/);
+    assert.notEqual(first.key, second.key);
+    assert.match(first.key, /^content-csv-import-[0-9a-f-]{36}$/);
     assert.equal(first.name, 'posts.csv');
-    assert.equal(await fs.readFile(first.path, 'utf8'), 'title\nA staged post\n');
+    assert.equal(
+      await fs.readFile(path.join(storagePath, first.key), 'utf8'),
+      'title\nA staged post\n',
+    );
 
     await stager.remove(first);
     await stager.remove(first);
-    assert.equal(await fs.pathExists(first.path), false);
-    assert.equal(await fs.pathExists(second.path), true);
+    assert.deepEqual(await fs.readdir(storagePath), [second.key]);
+  });
+
+  it('downloads a stored upload to a local copy that cleanup removes', async function () {
+    const stager = createImportFileStager(importsStore);
+    const staged = await stager.stage({ filePath: sourcePath, fileName: 'posts.csv' });
+    await fs.remove(sourcePath);
+
+    const downloaded = await stager.download(staged);
+
+    assert.equal(await fs.readFile(downloaded.path, 'utf8'), 'title\nA staged post\n');
+    await downloaded.cleanup();
+    assert.equal(await fs.pathExists(path.dirname(downloaded.path)), false);
+    assert.deepEqual(await fs.readdir(storagePath), [staged.key]);
+  });
+
+  it('leaves no local copy when the download fails', async function () {
+    const stager = createImportFileStager(importsStore);
+    const mkdtemp = sinon.spy(fs.promises, 'mkdtemp');
+
+    await assert.rejects(stager.download({ key: 'missing', name: 'posts.csv' }), {
+      errorType: 'NotFoundError',
+    });
+
+    assert.equal(fs.existsSync(await mkdtemp.firstCall.returnValue), false);
   });
 
   it('removes a partial staged file when the copy fails', async function () {

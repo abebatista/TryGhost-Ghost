@@ -25,8 +25,9 @@ function harness(
   const created: Array<{ data: PostData; options: object; metadata?: PostWriteMetadata }> = [];
   const reported: unknown[] = [];
   const jobs: ContentCSVImportJob[] = [];
-  const stagedFiles: Array<{ path: string; name: string }> = [];
-  const removedFiles: Array<{ path: string; name: string }> = [];
+  const stagedFiles: Array<{ key: string; name: string }> = [];
+  const removedFiles: Array<{ key: string; name: string }> = [];
+  const downloadCleanup = sinon.stub().resolves();
   const createFailures = new Map<string, unknown>();
   const duplicateSlugs = new Set<string>();
   const updatedTitles = new Set<string>();
@@ -107,11 +108,15 @@ function harness(
     },
     fileStager: {
       stage: async ({ fileName }: { fileName: string }) => {
-        const file = { path: `/tmp/staged-${stagedFiles.length + 1}`, name: fileName };
+        const file = { key: `staged-${stagedFiles.length + 1}`, name: fileName };
         stagedFiles.push(file);
         return file;
       },
-      remove: async (file: { path: string; name: string }) => {
+      download: async (file: { key: string; name: string }) => ({
+        path: `/tmp/downloaded-${file.key}`,
+        cleanup: downloadCleanup,
+      }),
+      remove: async (file: { key: string; name: string }) => {
         removedFiles.push(file);
       },
     },
@@ -166,6 +171,7 @@ function harness(
     jobs,
     stagedFiles,
     removedFiles,
+    downloadCleanup,
     createFailures,
     duplicateSlugs,
     updatedTitles,
@@ -213,7 +219,7 @@ describe('ContentCSVImporter', function () {
     const serialized = JSON.parse(JSON.stringify(h.jobs[0]));
     assert.deepEqual(serialized, {
       importId: 'run_test',
-      file: { path: '/tmp/staged-1', name: 'posts.csv' },
+      file: { key: 'staged-1', name: 'posts.csv' },
       importTagNames: ['#Import 2026-01-01 11:30', '#Import Run run_test'],
       emailRecipient: 'owner@example.com',
     });
@@ -232,7 +238,7 @@ describe('ContentCSVImporter', function () {
     await h.run();
 
     sinon.assert.calledWithExactly(infoLog, '[Background Job] content-csv-import queued');
-    assert.deepEqual(h.removedFiles, [{ path: '/tmp/staged-1', name: 'posts.csv' }]);
+    assert.deepEqual(h.removedFiles, [{ key: 'staged-1', name: 'posts.csv' }]);
   });
 
   it('settles only after the dispatched import has finished reporting and cleanup', async function () {
@@ -423,7 +429,7 @@ describe('ContentCSVImporter', function () {
     assert.deepEqual(h.jobs[0].mapping, { Headline: 'title' });
   });
 
-  it('validates the uploaded file rather than a staged copy', async function () {
+  it('reads the upload in the request and a download of the staged copy in the job', async function () {
     const h = harness();
     const readPaths: string[] = [];
     const importer = new ContentCSVImporter({
@@ -435,8 +441,10 @@ describe('ContentCSVImporter', function () {
     });
 
     await importer.importCSV({ filePath: '/tmp/posts.csv', fileName: 'posts.csv' });
+    await importer.handle(h.jobs[0]);
 
-    assert.deepEqual(readPaths, ['/tmp/posts.csv']);
+    assert.deepEqual(readPaths, ['/tmp/posts.csv', '/tmp/downloaded-staged-1']);
+    sinon.assert.calledOnce(h.downloadCleanup);
   });
 
   it('reads a prepared archive source and cleans it after the job', async function () {
@@ -839,7 +847,7 @@ describe('ContentCSVImporter', function () {
     assert.equal(h.created.length, 0);
     assert.equal(h.store.get('run_test')?.status, 'failed');
     assert.match(h.store.get('run_test')?.failureReason ?? '', /more than 100 posts/);
-    assert.deepEqual(h.removedFiles, [{ path: '/tmp/staged-1', name: 'posts.csv' }]);
+    assert.deepEqual(h.removedFiles, [{ key: 'staged-1', name: 'posts.csv' }]);
   });
 
   it('fails and emails the run if the staged file cannot be reparsed by the job', async function () {
@@ -866,7 +874,32 @@ describe('ContentCSVImporter', function () {
       sinon.match({ status: 'failed' }),
       'owner@example.com',
     );
-    assert.deepEqual(h.removedFiles, [{ path: '/tmp/staged-1', name: 'posts.csv' }]);
+    sinon.assert.calledOnce(h.downloadCleanup);
+    assert.deepEqual(h.removedFiles, [{ key: 'staged-1', name: 'posts.csv' }]);
+  });
+
+  it('fails and emails the run if the staged upload cannot be downloaded', async function () {
+    const h = harness();
+    const failure = new Error('storage unavailable');
+    const importer = new ContentCSVImporter({
+      ...h.deps,
+      fileStager: {
+        ...h.deps.fileStager,
+        download: async () => {
+          throw failure;
+        },
+      },
+    });
+
+    await importer.importCSV({ filePath: '/tmp/posts.csv', fileName: 'posts.csv' });
+    await assert.rejects(importer.handle(h.jobs[0]), failure);
+
+    sinon.assert.calledOnceWithExactly(
+      h.sendEmail,
+      sinon.match({ status: 'failed', failureReason: 'storage unavailable' }),
+      'owner@example.com',
+    );
+    assert.deepEqual(h.removedFiles, [{ key: 'staged-1', name: 'posts.csv' }]);
   });
 
   it('cleans a prepared source if dispatch fails', async function () {
@@ -889,7 +922,7 @@ describe('ContentCSVImporter', function () {
     sinon.assert.calledOnce(cleanup);
     sinon.assert.notCalled(h.sendEmail);
     sinon.assert.calledOnceWithExactly(h.releaseRun, 'run_test');
-    assert.deepEqual(h.removedFiles, [{ path: '/tmp/staged-1', name: 'posts.zip' }]);
+    assert.deepEqual(h.removedFiles, [{ key: 'staged-1', name: 'posts.zip' }]);
   });
 
   it('reports cleanup failures without rejecting the completed job', async function () {
@@ -927,6 +960,17 @@ describe('ContentCSVImporter', function () {
 
     await importer.importCSV({ filePath: '/tmp/posts.csv', fileName: 'posts.csv' });
     await importer.handle(h.jobs[0]);
+
+    assert.equal(h.store.get('run_test')?.status, 'complete');
+    assert.deepEqual(h.reported, [cleanupError]);
+  });
+
+  it('reports a download cleanup failure without rejecting the completed job', async function () {
+    const h = harness();
+    const cleanupError = new Error('download cleanup failed');
+    h.downloadCleanup.rejects(cleanupError);
+
+    await h.run();
 
     assert.equal(h.store.get('run_test')?.status, 'complete');
     assert.deepEqual(h.reported, [cleanupError]);
