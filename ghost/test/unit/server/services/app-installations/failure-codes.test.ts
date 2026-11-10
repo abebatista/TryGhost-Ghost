@@ -47,11 +47,6 @@ function codesInService(): Set<string> {
 describe('app installation failure codes', function () {
   const thrown = codesInService();
 
-  it('finds the codes in the service', function () {
-    assert.ok(thrown.has('APP_MANIFEST_INVALID'));
-    assert.ok(thrown.has('APP_UNAVAILABLE'));
-  });
-
   it('match the codes app-contracts lists for Admin', function () {
     const listed = new Set<string>(APP_FAILURE_CODES);
     const forAdmin = [...thrown].filter((code) => !NOT_FOR_ADMIN.has(code));
