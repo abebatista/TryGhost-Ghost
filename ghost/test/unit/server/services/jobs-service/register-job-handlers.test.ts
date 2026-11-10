@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { setImmediate } from 'node:timers/promises';
 import sinon from 'sinon';
 import { describe, it, beforeEach, afterEach } from 'vitest';
+import { globSync } from 'glob';
 import { JobsService } from '../../../../../core/server/services/jobs-service/jobs-service';
+import type { JobConstructor } from '../../../../../core/server/services/jobs-service/job';
 import ExternalMediaInliner from '../../../../../core/server/services/media-inliner/external-media-inliner';
 import ExternalMediaInlinerJob from '../../../../../core/server/services/media-inliner/external-media-inliner-job';
 import ContentCSVImportJob from '../../../../../core/server/services/content-import/jobs/content-csv-import-job';
@@ -19,6 +21,7 @@ const SIGNING_KEYS_PATH = require.resolve('../../../../../core/server/services/s
 const {
   SigningKeyService,
 } = require('../../../../../core/server/services/signing-keys/signing-key-service');
+const { Job } = require('../../../../../core/server/services/jobs-service/job');
 const MODULE_PATHS = [REGISTRATION_PATH, SIGNING_KEYS_PATH];
 
 // Load shared dependencies before isolating the root, as the original suite did.
@@ -369,5 +372,26 @@ describe('register-job-handlers', function () {
     const registration = registrationFor('tinybird-sync');
 
     assert.deepEqual(registration.args[2], { queue: 'tinybird-sync', concurrency: 1 });
+  });
+
+  it('registers exactly one handler for every job class', function () {
+    const jobFiles = globSync('../../../../../core/server/**/*-job.ts', {
+      cwd: __dirname,
+      absolute: true,
+    });
+    const jobClasses = jobFiles
+      .flatMap((file) => Object.values(require(file)))
+      .filter(
+        (value): value is JobConstructor =>
+          typeof value === 'function' && value.prototype instanceof Job,
+      );
+
+    assert.ok(jobClasses.length > 0, 'the glob finds job classes');
+    for (const JobClass of jobClasses) {
+      const registrations = jobsService.handle
+        .getCalls()
+        .filter((c) => c.args[0].type === JobClass.type);
+      assert.equal(registrations.length, 1, `${JobClass.type} has exactly one handler`);
+    }
   });
 });
