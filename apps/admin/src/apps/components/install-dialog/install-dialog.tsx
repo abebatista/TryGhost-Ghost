@@ -81,12 +81,16 @@ export const InstallDialog: React.FC<InstallDialogProps> = ({ manifestUrl, onClo
       done(active ? { installationId: active.id, installed: installed !== undefined } : undefined);
     } catch (error) {
       const apiError = apiErrorOf(error);
-      if (isOutdatedReviewCode(apiError?.code)) {
-        // The app, or the site's installation of it, is no longer what was reviewed. Ghost
-        // answers with the review as it stands now when it has one; otherwise ask for it.
+      const code = apiError?.code;
+      if (isOutdatedReviewCode(code)) {
+        // The app, or the site's installation of it, is no longer what was reviewed. When the
+        // manifest or the installation changed, Ghost answers with the review as it stands
+        // now if it has one; otherwise, as when the app was installed or uninstalled under the
+        // publisher, ask for it.
         setNotice(CHANGED);
         const details: unknown = apiError?.details;
-        if (isPreview(details)) {
+        const sendsReview = code === 'APP_MANIFEST_CHANGED' || code === 'APP_INSTALLATION_CHANGED';
+        if (sendsReview && isPreview(details)) {
           replace(details);
         } else {
           await reload();
