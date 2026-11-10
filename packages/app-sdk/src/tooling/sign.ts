@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+import type { AppFailureCode } from '@tryghost/app-contracts';
 import {
   MANIFEST_MAX_BYTES,
   SIGNED_MANIFEST_MAX_BYTES,
@@ -54,7 +55,10 @@ export type SignResult =
        * As Ghost would refuse it: `APP_MANIFEST_INVALID`, `APP_MANIFEST_URL_INVALID`, or
        * `APP_MANIFEST_TOO_LARGE` for one larger than Ghost stores.
        */
-      code: 'APP_MANIFEST_INVALID' | 'APP_MANIFEST_URL_INVALID' | 'APP_MANIFEST_TOO_LARGE';
+      code: Extract<
+        AppFailureCode,
+        'APP_MANIFEST_INVALID' | 'APP_MANIFEST_URL_INVALID' | 'APP_MANIFEST_TOO_LARGE'
+      >;
       errors: ManifestError[];
     };
 
