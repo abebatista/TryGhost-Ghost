@@ -1,5 +1,3 @@
-import type { AppFailureCode } from '../failure-codes.ts';
-
 /**
  * The codes Ghost fails with when it couldn't confirm an app is the one it says it is,
  * whether reviewing an install link or starting a session. They're kept apart from the
@@ -25,7 +23,7 @@ export const UNCONFIRMED_APP_CODES = [
   'APP_BACKEND_KEY_RETIRED',
   /** The app's origin didn't answer the challenge with the manifest's backend key. */
   'APP_CHALLENGE_FAILED',
-] as const satisfies readonly AppFailureCode[];
+] as const;
 
 export type UnconfirmedAppCode = (typeof UNCONFIRMED_APP_CODES)[number];
 

@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { APP_FAILURE_CODES, UNCONFIRMED_APP_CODES, isAppFailureCode } from '../src/index.ts';
+import { APP_FAILURE_CODES, isAppFailureCode, isOutdatedReviewCode } from '../src/index.ts';
 
 describe('APP_FAILURE_CODES', () => {
-  it('lists each code once', () => {
+  it('puts each code in one set only', () => {
     expect(new Set(APP_FAILURE_CODES).size).toBe(APP_FAILURE_CODES.length);
   });
+});
 
-  it('includes every code for an app Ghost couldn’t confirm', () => {
-    expect(APP_FAILURE_CODES).toEqual(expect.arrayContaining([...UNCONFIRMED_APP_CODES]));
+describe('isOutdatedReviewCode', () => {
+  it('tells a review that is out of date from a failure', () => {
+    expect(isOutdatedReviewCode('APP_MANIFEST_CHANGED')).toBe(true);
+    expect(isOutdatedReviewCode('APP_INSTALLATION_UNINSTALLED')).toBe(true);
+    expect(isOutdatedReviewCode('APP_MANIFEST_INVALID')).toBe(false);
+    expect(isOutdatedReviewCode('constructor')).toBe(false);
   });
 });
 

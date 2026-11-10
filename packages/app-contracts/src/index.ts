@@ -10,7 +10,13 @@
  * that never validate anything. Validation lives in the contract's own entry point.
  */
 
-export { APP_FAILURE_CODES, isAppFailureCode, type AppFailureCode } from './failure-codes.ts';
+export {
+  APP_FAILURE_CODES,
+  OUTDATED_REVIEW_CODES,
+  isAppFailureCode,
+  isOutdatedReviewCode,
+  type AppFailureCode,
+} from './failure-codes.ts';
 export {
   UNCONFIRMED_APP_CODES,
   isUnconfirmedAppCode,
