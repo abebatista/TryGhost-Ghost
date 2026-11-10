@@ -79,10 +79,13 @@ function shippingAsked(session: CompletedSession) {
 const ANSWERS: {
   [Port in StripePort]: (
     session: CompletedSession,
-  ) => WriteOf<(typeof PORT_FIELD)[Port]['type']> | undefined;
+  ) => WriteOf<(typeof PORT_FIELD)[Port]['types'][number]> | undefined;
 } = {
   [STRIPE_PORT.shippingAddress]: (session) => addressValue(shippingAsked(session)?.address),
   [STRIPE_PORT.shippingName]: (session) => shippingAsked(session)?.name,
+  // As Stripe gave it. A phone field keeps it in E.164 by its own rule, which refuses a number
+  // without its country code, as Apple Pay and Google Pay can pass one on; a short text field
+  // keeps exactly what the buyer gave.
   [STRIPE_PORT.phone]: (session) =>
     session.phone_number_collection?.enabled ? session.customer_details?.phone : undefined,
 };

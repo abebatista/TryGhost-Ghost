@@ -18,7 +18,7 @@ export type { StripeAllowedCountry } from './allowed-countries.ts';
 export { STRIPE_PORT, STRIPE_PORTS, isStripePort } from './field-ports.ts';
 export type { StripePort } from './field-ports.ts';
 
-export { PORT_FIELD } from './destinations.ts';
+export { PORT_FIELD, portTakes } from './destinations.ts';
 
 export { CHECKOUT_PART_SETTINGS, COLLECTED_PARTS, CountryCode } from './collected-parts.ts';
 export type {

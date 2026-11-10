@@ -1,6 +1,7 @@
 import { describe, it, assert } from 'vitest';
 import {
   PORT_FIELD,
+  portTakes,
   STRIPE_ALLOWED_COUNTRIES,
   STRIPE_CHECKOUT_BORDER_STYLES,
   STRIPE_CHECKOUT_FONTS,
@@ -41,13 +42,17 @@ describe('ports', function () {
     assert.equal(isStripePort('email'), false);
   });
 
-  it('names a field for every port, of a type that can hold what it returns', function () {
+  it('names a field for every port, of the types that can hold what it returns', function () {
     // Stripe returns a structured address for the address, plain text for the rest, so a
-    // port left out here would be collected into whatever a request happened to name.
+    // port left out here would be collected into whatever a request happened to name. A phone
+    // number goes into a short text field or a phone field.
     assert.deepEqual(Object.keys(PORT_FIELD).sort(), [...STRIPE_PORTS].sort());
-    assert.equal(PORT_FIELD[STRIPE_PORT.shippingAddress].type, 'address');
-    assert.equal(PORT_FIELD[STRIPE_PORT.shippingName].type, 'short_text');
-    assert.equal(PORT_FIELD[STRIPE_PORT.phone].type, 'short_text');
+    assert.equal(portTakes(STRIPE_PORT.shippingAddress, 'address'), true);
+    assert.equal(portTakes(STRIPE_PORT.shippingAddress, 'short_text'), false);
+    assert.equal(portTakes(STRIPE_PORT.shippingName, 'short_text'), true);
+    assert.equal(portTakes(STRIPE_PORT.phone, 'phone'), true);
+    assert.equal(portTakes(STRIPE_PORT.phone, 'short_text'), true);
+    assert.equal(portTakes(STRIPE_PORT.phone, 'long_text'), false);
   });
 });
 

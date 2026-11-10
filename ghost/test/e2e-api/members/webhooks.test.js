@@ -4557,7 +4557,12 @@ describe('Members API', function () {
     // What the checkout asked for, as Stripe reports it on the completed session.
     async function completeCheckout(
       email,
-      { asked = { shipping: true }, metadata = {}, created = Math.floor(Date.now() / 1000) } = {},
+      {
+        asked = { shipping: true },
+        metadata = {},
+        created = Math.floor(Date.now() / 1000),
+        phone = '+442079460000',
+      } = {},
     ) {
       set(customer, {
         id: 'cus_shipping',
@@ -4577,7 +4582,7 @@ describe('Members API', function () {
             shipping_address_collection: asked.shipping ? { allowed_countries: ['GB'] } : null,
             shipping: { name: 'Jamie Doe', address },
             phone_number_collection: { enabled: Boolean(asked.phone) },
-            customer_details: { email, phone: '+442079460000' },
+            customer_details: { email, phone },
           },
         },
       });
@@ -4604,6 +4609,62 @@ describe('Members API', function () {
       assert.equal(before.body.members.length, 0);
 
       assert.deepEqual(await completeCheckout('shipping-new@example.com'), {
+        delivery_address: {
+          line1: '1 High Street',
+          city: 'London',
+          postal_code: 'N1 1AA',
+          country: 'GB',
+        },
+        recipient_name: 'Jamie Doe',
+      });
+    });
+
+    // Checkout collects the phone number into a phone field rather than the short text one.
+    async function collectPhoneIntoPhoneField() {
+      await adminAgent
+        .post('/members/metafields/custom/')
+        .body({ members_metafields: [{ name: 'Mobile', type: 'phone' }] })
+        .expectStatus(201);
+      await adminAgent
+        .put('/stripe/checkout/config/')
+        .body({ checkout_config: [{ phone: { collect: true, custom_field_key: 'mobile' } }] })
+        .expectStatus(200);
+    }
+
+    it('saves the phone number Stripe collects into a phone field, as Stripe gave it', async function () {
+      await collectPhoneIntoPhoneField();
+
+      // Stripe gives a number typed into Checkout in E.164, the form a phone field keeps.
+      const saved = await completeCheckout('stripe-phone@example.com', {
+        asked: { shipping: true, phone: true },
+      });
+
+      assert.equal(saved.mobile, '+442079460000');
+    });
+
+    it("keeps a wallet's phone number in a phone field in international form", async function () {
+      await collectPhoneIntoPhoneField();
+
+      // Apple Pay and Google Pay pass a number on as the wallet kept it, rather than in E.164.
+      const saved = await completeCheckout('wallet-phone@example.com', {
+        asked: { shipping: true, phone: true },
+        phone: '+44 (0)20 7946 0000',
+      });
+
+      assert.equal(saved.mobile, '+442079460000');
+    });
+
+    it("still saves the address when a wallet's phone number has no country code", async function () {
+      await collectPhoneIntoPhoneField();
+
+      // A phone field can't tell which country a national number is from, so it refuses one,
+      // and the payment has already been taken, so nothing else the checkout collected is lost.
+      const saved = await completeCheckout('national-phone@example.com', {
+        asked: { shipping: true, phone: true },
+        phone: '020 7946 0000',
+      });
+
+      assert.deepEqual(saved, {
         delivery_address: {
           line1: '1 High Street',
           city: 'London',

@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@tryghost/shade/components';
-import { PORT_FIELD, STRIPE_ALLOWED_COUNTRIES, STRIPE_PORT } from '@tryghost/checkout';
+import { STRIPE_ALLOWED_COUNTRIES, STRIPE_PORT } from '@tryghost/checkout';
 import type { MemberCustomField } from '@tryghost/admin-x-framework/api/member-custom-fields';
 import type { Tier } from '@tryghost/admin-x-framework/api/tiers';
 import { countryName } from '@tryghost/admin-x-framework/utils/countries';
@@ -95,7 +95,7 @@ const ShippingSettings: React.FC<{
         error={errors.shippingAddressField}
         fields={fields}
         label="Save address as"
-        type={PORT_FIELD[STRIPE_PORT.shippingAddress].type}
+        port={STRIPE_PORT.shippingAddress}
         value={state.addressFieldKey}
         onChange={(addressFieldKey) => set({ addressFieldKey })}
       />
@@ -104,7 +104,7 @@ const ShippingSettings: React.FC<{
         error={errors.shippingNameField}
         fields={fields}
         label="Save name as"
-        type={PORT_FIELD[STRIPE_PORT.shippingName].type}
+        port={STRIPE_PORT.shippingName}
         value={state.nameFieldKey}
         onChange={(nameFieldKey) => set({ nameFieldKey })}
       />

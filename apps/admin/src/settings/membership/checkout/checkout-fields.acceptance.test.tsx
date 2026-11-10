@@ -190,6 +190,52 @@ describe('Checkout settings', () => {
       });
   });
 
+  it('offers phone fields beside short text ones, and a new field there can be either', async () => {
+    const mobileField = {
+      ...phoneField,
+      key: KeySchema.parse('mobile'),
+      name: 'Mobile',
+      type: 'phone',
+    } satisfies MemberCustomField;
+    const { modal } = await openCheckoutFields(
+      { design: { customize: false }, shipping: { collect: false }, phone: { collect: false } },
+      [phoneField, mobileField],
+      { customFieldTypePhone: true },
+    );
+
+    await modal.getByRole('switch', { name: 'Phone' }).click();
+    await modal.getByRole('combobox', { name: 'Save phone as' }).click();
+    await expect.element(page.getByRole('option', { name: 'Contact phone' })).toBeVisible();
+    await expect.element(page.getByRole('option', { name: 'Mobile' })).toBeVisible();
+
+    await page.getByRole('option', { name: 'Add custom field' }).click();
+    const type = page.getByRole('dialog', { name: 'New custom field' }).getByRole('combobox', {
+      name: 'Type',
+    });
+    await expect.element(type).toHaveTextContent('Short text');
+    await type.click();
+    await expect.element(page.getByRole('option', { name: 'Phone' })).toBeVisible();
+    await expect.element(page.getByRole('option', { name: 'Long text' })).not.toBeInTheDocument();
+  });
+
+  it('starts a new field for the phone number as short text while phone fields are not offered', async () => {
+    const { modal } = await openCheckoutFields({
+      design: { customize: false },
+      shipping: { collect: false },
+      phone: { collect: false },
+    });
+
+    await modal.getByRole('switch', { name: 'Phone' }).click();
+    await modal.getByRole('combobox', { name: 'Save phone as' }).click();
+    await page.getByRole('option', { name: 'Add custom field' }).click();
+    const type = page.getByRole('dialog', { name: 'New custom field' }).getByRole('combobox', {
+      name: 'Type',
+    });
+
+    await expect.element(type).toHaveTextContent('Short text');
+    await expect.element(type).toBeDisabled();
+  });
+
   // A site keeps its Stripe connection when the host switches its custom fields off, so it
   // can still reach these settings. Its fields read as archived, and the server refuses a new
   // one with the host's sentence.

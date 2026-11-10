@@ -89,6 +89,16 @@ describe('Stripe Checkout phone number collection', function () {
     });
   });
 
+  it('collects the phone number into a phone field', async function () {
+    await createField('Mobile', 'phone');
+
+    await setCheckout(phone({ custom_field_key: 'mobile' }));
+
+    const saved = (await readCheckout()).phone;
+    assert.equal(saved.collect, true);
+    assert.equal(saved.custom_field_key, 'mobile');
+  });
+
   it('refuses a custom field that cannot hold a phone number', async function () {
     assert.deepEqual(await refusal(phone({ custom_field_key: 'not_a_field' })), {
       property: 'phone.custom_field_key',
@@ -102,7 +112,7 @@ describe('Stripe Checkout phone number collection', function () {
     });
     assert.deepEqual(await refusal(phone({ custom_field_key: 'delivery_address' })), {
       property: 'phone.custom_field_key',
-      message: 'Choose a short text custom field for the phone number.',
+      message: 'Choose a custom field that can hold a phone number, such as a short text field.',
     });
     assert.equal(
       (await refusal(phone({ custom_field_key: undefined }))).property,

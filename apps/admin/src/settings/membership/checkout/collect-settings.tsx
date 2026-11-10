@@ -15,6 +15,7 @@ import {
   Switch,
 } from '@tryghost/shade/components';
 import { CustomFieldPicker } from '@/shared/member-custom-fields/custom-field-picker';
+import { PORT_FIELD, type StripePort, portTakes } from '@tryghost/checkout';
 import {
   type MemberCustomField,
   creatableTypesAmong,
@@ -84,10 +85,10 @@ export const MultiPicker: React.FC<{
   );
 };
 
-/** The custom field a collected value is saved into, of the one type that can hold it. */
+/** The custom field a collected value is saved into, of a type that can hold what `port` supplies. */
 export const Destination: React.FC<{
   label: string;
-  type: MemberCustomField['type'];
+  port: StripePort;
   fields: MemberCustomField[];
   /**
    * The fields chosen for every collected value. Another value's field isn't offered, as the
@@ -97,7 +98,7 @@ export const Destination: React.FC<{
   value: string | null;
   error?: string;
   onChange: (key: string) => void;
-}> = ({ label, type, fields, chosen, value, error, onChange }) => {
+}> = ({ label, port, fields, chosen, value, error, onChange }) => {
   const creatableTypes = useCreatableMemberCustomFieldTypes();
   return (
     <SubRow error={error} label={label}>
@@ -107,12 +108,14 @@ export const Destination: React.FC<{
         // connect where it lets it have custom fields. A site that loses them keeps its
         // connection, and the server refuses a new field there with the host's message, which
         // the picker shows. A type still in development is offered where its own flag is on.
-        createTypes={creatableTypesAmong(creatableTypes, [type])}
+        createTypes={creatableTypesAmong(creatableTypes, PORT_FIELD[port].types)}
         // A field archived after it was chosen stays chosen, so the setting can be saved back.
         fields={fields.filter(
           (field) =>
             field.key === value ||
-            (field.type === type && field.status === 'active' && !chosen.includes(field.key)),
+            (portTakes(port, field.type) &&
+              field.status === 'active' &&
+              !chosen.includes(field.key)),
         )}
         invalid={Boolean(error)}
         label={label}

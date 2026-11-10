@@ -3,7 +3,8 @@ import errors from '@tryghost/errors';
 import type { GhostLogger } from '@tryghost/logging';
 import { z } from 'zod';
 import type { Knex } from 'knex';
-import { PORT_FIELD, STRIPE_PORT, STRIPE_PORTS, type StripePort } from '@tryghost/checkout';
+import { STRIPE_PORT, STRIPE_PORTS, portTakes, type StripePort } from '@tryghost/checkout';
+import { FIELD_TYPE_IDS } from '@tryghost/metafield-types/structure';
 import type { FieldStatus } from '../members-metafields/schema';
 import type { FieldSource } from '../members-metafields';
 import {
@@ -112,7 +113,8 @@ const PARTS: {
         port: STRIPE_PORT.phone,
         customFieldKey: (phone) => phone.customFieldKey,
         property: 'phone.custom_field_key',
-        wrongType: 'Choose a short text custom field for the phone number.',
+        wrongType:
+          'Choose a custom field that can hold a phone number, such as a short text field.',
         holds: 'the phone number',
         essential: true,
       },
@@ -197,6 +199,13 @@ function storedColumns(requested: RequestedParts): {
 }
 
 /**
+ * A stored field's type, or null for one this server doesn't know, which can't keep anything a
+ * checkout collects. Lenient rather than strict so a field of such a type can't stop a site's
+ * checkout settings from loading.
+ */
+const StoredFieldType = z.enum(FIELD_TYPE_IDS).nullable().catch(null);
+
+/**
  * One row of the config read: the row's parts, one tier a collected part names and that tier
  * again only if it is paid (or nulls), and one port the collected parts bind with its field,
  * and that field again only while it is active (or nulls). A config whose parts name several
@@ -208,7 +217,7 @@ const ReadRow = DbConfigParts.extend({
   port: z.enum(STRIPE_PORTS).nullable(),
   bound_key: z.nullable(KeySchema),
   active_key: z.string().nullable(),
-  active_type: z.string().nullable(),
+  active_type: StoredFieldType,
 });
 type ReadRow = z.output<typeof ReadRow>;
 
@@ -226,7 +235,10 @@ function boundFields(rows: ReadRow[]): Map<StripePort, Bound> {
       bound.set(row.port, {
         customFieldKey: row.bound_key,
         // Ready while the field is active and still holds what the port supplies.
-        ready: row.active_key !== null && row.active_type === PORT_FIELD[row.port].type,
+        ready:
+          row.active_key !== null &&
+          row.active_type !== null &&
+          portTakes(row.port, row.active_type),
       });
     }
   }
@@ -234,7 +246,11 @@ function boundFields(rows: ReadRow[]): Map<StripePort, Bound> {
 }
 
 const LockedTier = z.object({ id: z.string(), type: z.string() });
-const LockedField = z.object({ key: KeySchema, type: z.string(), status: z.string() });
+const LockedField = z.object({
+  key: KeySchema,
+  type: StoredFieldType,
+  status: z.string(),
+});
 const LockedBinding = z.object({ port: z.enum(STRIPE_PORTS), metafield_key: KeySchema });
 
 /** Points a port at a field, or stops it writing anywhere. */
@@ -611,7 +627,7 @@ async function assertTargets(
         property,
       });
     }
-    if (field.type !== PORT_FIELD[port].type) {
+    if (field.type === null || !portTakes(port, field.type)) {
       throw new errors.ValidationError({ message: wrongType, property });
     }
   }
