@@ -12,7 +12,7 @@ import {
   type ListSource,
   type PartsOf,
   type ShapeOf,
-  type TextSize,
+  type TextFormat,
 } from '@tryghost/metafield-types/structure';
 import type { ShapeText } from '@tryghost/metafield-types/shapes';
 
@@ -50,7 +50,7 @@ const LIST_OPTIONS: {
   countries: (held) => countryOptions(held),
 };
 
-const TEXT_INPUT: { [S in TextSize]: 'text' | 'textarea' } = {
+const TEXT_INPUT: { [F in TextFormat]: 'text' | 'textarea' } = {
   line: 'text',
   code: 'text',
   long: 'textarea',
@@ -63,7 +63,7 @@ interface LeafInput {
 
 const leafInput = (leaf: Leaf, held: string | undefined): LeafInput =>
   matchLeaf<LeafInput>(leaf, {
-    text: ({ size }) => ({ type: TEXT_INPUT[size] }),
+    text: ({ format }) => ({ type: TEXT_INPUT[format] }),
     choice: ({ from }) => ({ type: 'select', options: LIST_OPTIONS[from](held) }),
   });
 
