@@ -21,6 +21,10 @@ changes are defined in [App Contracts](../../../../../packages/app-contracts/CON
 4. **Uninstall.** The installation ends and is kept as a record. Installing the
    app again starts a new installation.
 
+Every code this service fails an Admin request with is listed in App
+Contracts' `APP_FAILURE_CODES`, and a unit test checks the list against the
+codes thrown here.
+
 ## Language
 
 ### Installations

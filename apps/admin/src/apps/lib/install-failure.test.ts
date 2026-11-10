@@ -99,6 +99,22 @@ describe('installFailureOf', () => {
     });
   });
 
+  it.each([
+    'APP_MANIFEST_CHANGED',
+    'APP_INSTALLATION_CHANGED',
+    'APP_ALREADY_INSTALLED',
+    'APP_INSTALLATION_UNINSTALLED',
+    'APP_NOT_INSTALLED',
+    'APP_UNAVAILABLE',
+    'APP_SOMETHING_NEW',
+    'constructor',
+  ])('says what Ghost said for %s, which isn’t a failure the screen explains', (code) => {
+    expect(installFailureOf(apiError(code, 'What Ghost said'))).toEqual({
+      kind: 'error',
+      message: 'What Ghost said',
+    });
+  });
+
   it('refuses another developer’s app without saying more', () => {
     expect(installFailureOf(apiError('APP_IDENTITY_MISMATCH', 'Anything'))).toEqual({
       kind: 'another-developer',

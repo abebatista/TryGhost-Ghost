@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@tryghost/shade/components';
 import { toast } from 'sonner';
+import { isAppFailureCode } from '@tryghost/app-contracts';
 import { useNavigate } from '@tryghost/admin-x-framework';
 import type { AppInstallationPreview } from '@tryghost/admin-x-framework/api/app-installations';
 import { AlreadyInstalled } from './already-installed';
@@ -80,7 +81,9 @@ export const InstallDialog: React.FC<InstallDialogProps> = ({ manifestUrl, onClo
       done(active ? { installationId: active.id, installed: installed !== undefined } : undefined);
     } catch (error) {
       const apiError = apiErrorOf(error);
-      const code = apiError?.code;
+      // Narrowed, so each code compared below has to be one Ghost answers with.
+      const answered = apiError?.code;
+      const code = isAppFailureCode(answered) ? answered : undefined;
       if (code === 'APP_MANIFEST_CHANGED' || code === 'APP_INSTALLATION_CHANGED') {
         // The app, or the site's installation of it, is no longer what was reviewed. Ghost
         // answers with the review as it stands now when it has one; otherwise ask for it.

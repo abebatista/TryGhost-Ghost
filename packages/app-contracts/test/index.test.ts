@@ -30,6 +30,7 @@ describe('the root entry point', () => {
   it('exposes only what depends on nothing', () => {
     expect(Object.keys(root).sort()).toEqual([
       'APP_ERROR_CODES',
+      'APP_FAILURE_CODES',
       'APP_ID_MAX_LENGTH',
       'ARGUMENT_MESSAGES',
       'BRIDGE_ERROR_CODES',
@@ -46,6 +47,7 @@ describe('the root entry point', () => {
       'appPageUrl',
       'decodeBridgeError',
       'encodeBridgeError',
+      'isAppFailureCode',
       'isConnectMessage',
       'isContainedPath',
       'isFetchResponse',

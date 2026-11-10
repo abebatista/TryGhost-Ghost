@@ -1,9 +1,16 @@
+import type { AppFailureCode } from '../failure-codes.ts';
+
 /**
  * The codes Ghost fails with when it couldn't confirm an app is the one it says it is,
  * whether reviewing an install link or starting a session. They're kept apart from the
  * codes for an app that is down or broken, because the publisher should hear something
  * different: contact the developer, and don't install it again from a link, which is the
  * one way a different developer's key gets pinned.
+ *
+ * A session that fails with any of them says so. The install screen says so for the rest,
+ * but shows two differently: a manifest for another address as a problem for the developer
+ * to fix, since it's refused before the signature is checked, and a link signed with
+ * another key than the installed app's as another developer's app.
  *
  * Free of jose and zod, so Admin reads it from the root entry point.
  */
@@ -18,7 +25,7 @@ export const UNCONFIRMED_APP_CODES = [
   'APP_BACKEND_KEY_RETIRED',
   /** The app's origin didn't answer the challenge with the manifest's backend key. */
   'APP_CHALLENGE_FAILED',
-] as const;
+] as const satisfies readonly AppFailureCode[];
 
 export type UnconfirmedAppCode = (typeof UNCONFIRMED_APP_CODES)[number];
 
