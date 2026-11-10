@@ -78,6 +78,7 @@ export type AutomationsRepository2<Connection> = {
   findFirstActionRevisions: (
     connection: Connection,
     options: ReadonlyDeep<
+      | { eventName: 'staging_load_test'; automationId: string }
       | {
           eventName: 'membership_started';
           memberStatus: 'free' | 'paid';
